@@ -3,6 +3,7 @@ import {
   UnitTestTree,
 } from '@angular-devkit/schematics/testing';
 
+import commentJson from 'comment-json';
 import path from 'path';
 
 import { createTestLibrary } from '../testing/scaffold';
@@ -51,31 +52,33 @@ describe('ng-add.schematic', () => {
     tree.delete(eslintConfigPath);
 
     await expectAsync(runSchematic(tree)).toBeRejectedWithError(
-      `No ${eslintConfigPath} file found in workspace root. ESLint must be installed and configured before installing Prettier. See https://github.com/angular-eslint/angular-eslint#readme for instructions.`
+      `No ${eslintConfigPath} file found in workspace. ESLint must be installed and configured before installing Prettier. See https://github.com/angular-eslint/angular-eslint#readme for instructions.`
     );
   });
 
   it('should install the expected packages', async () => {
     const updatedTree = await runSchematic(tree);
 
-    const packageJson = JSON.parse(updatedTree.readContent('package.json'));
-    const deps = packageJson.devDependencies;
+    const packageJson = commentJson.parse(
+      updatedTree.readContent('package.json')
+    );
 
-    expect(deps['prettier']).toBe('2.4.1');
-    expect(deps['@trivago/prettier-plugin-sort-imports']).toBe('2.0.4');
-    expect(deps['eslint-config-prettier']).toBe('8.3.0');
+    expect(packageJson.devDependencies).toEqual(
+      jasmine.objectContaining({
+        prettier: '2.4.1',
+        'eslint-config-prettier': '8.3.0',
+      })
+    );
   });
 
   it('should write Prettier config', async () => {
     const updatedTree = await runSchematic(tree);
 
-    const prettierConfig = JSON.parse(
+    const prettierConfig = commentJson.parse(
       updatedTree.readContent('.prettierrc.json')
     );
 
     expect(prettierConfig).toEqual({
-      importOrder: ['^@(.*)$', '^\\w(.*)$', '^(../)(.*)$', '^(./)(.*)$'],
-      importOrderSeparation: true,
       singleQuote: true,
     });
   });
@@ -91,13 +94,14 @@ describe('ng-add.schematic', () => {
 coverage
 dist
 node_modules
-package-lock.json`);
+package-lock.json
+test.ts`);
   });
 
   it('should configure ESLint if an .eslintrc.json file exists', async () => {
     tree.overwrite(
       eslintConfigPath,
-      JSON.stringify({
+      commentJson.stringify({
         overrides: {
           extends: ['foo'],
         },
@@ -106,13 +110,97 @@ package-lock.json`);
 
     const updatedTree = await runSchematic(tree);
 
-    const eslintConfig = JSON.parse(updatedTree.readContent(eslintConfigPath));
+    const eslintConfig = commentJson.parse(
+      updatedTree.readContent(eslintConfigPath)
+    );
 
     expect(eslintConfig).toEqual({
       overrides: {
         extends: ['foo', 'prettier'],
       },
     });
+  });
+
+  it('should configure ESLint if an .eslintrc.json file exists only in a project', async () => {
+    tree.delete(eslintConfigPath);
+
+    const projectEslintConfigPath = `projects/my-lib/${eslintConfigPath}`;
+
+    tree.create(
+      projectEslintConfigPath,
+      commentJson.stringify({
+        overrides: {
+          extends: ['foo'],
+        },
+      })
+    );
+
+    const updatedTree = await runSchematic(tree);
+
+    const eslintConfig = commentJson.parse(
+      updatedTree.readContent(projectEslintConfigPath)
+    );
+
+    expect(eslintConfig).toEqual({
+      overrides: {
+        extends: ['foo', 'prettier'],
+      },
+    });
+  });
+
+  it('should not update an .eslintrc.json file that extends another .eslintrc.json file', async () => {
+    const projectEslintConfigPath = `projects/my-lib/${eslintConfigPath}`;
+
+    tree.create(
+      projectEslintConfigPath,
+      commentJson.stringify({
+        extends: '../../.eslintrc.json',
+        overrides: {
+          extends: ['bar'],
+        },
+      })
+    );
+
+    const updatedTree = await runSchematic(tree);
+
+    const projectEslintConfig = commentJson.parse(
+      updatedTree.readContent(projectEslintConfigPath)
+    );
+
+    expect(projectEslintConfig).toEqual({
+      extends: '../../.eslintrc.json',
+      overrides: {
+        extends: ['bar'],
+      },
+    });
+
+    const eslintConfig = commentJson.parse(
+      updatedTree.readContent(eslintConfigPath)
+    );
+
+    expect(eslintConfig).toEqual({
+      overrides: {
+        extends: ['prettier'],
+      },
+    });
+  });
+
+  it('should error when an .eslintrc.json file extends an .eslintrc.json file that does not exist', async () => {
+    const projectEslintConfigPath = `projects/my-lib/${eslintConfigPath}`;
+
+    tree.create(
+      projectEslintConfigPath,
+      commentJson.stringify({
+        extends: '../.eslintrc.json',
+        overrides: {
+          extends: ['bar'],
+        },
+      })
+    );
+
+    await expectAsync(runSchematic(tree)).toBeRejectedWithError(
+      `${projectEslintConfigPath} extends projects/.eslintrc.json, but projects/.eslintrc.json was not found in the workspace.`
+    );
   });
 
   it('should not configure VSCode if .vscode folder does not exist', async () => {
@@ -126,11 +214,11 @@ package-lock.json`);
 
     const updatedTree = await runSchematic(tree);
 
-    const extensions = JSON.parse(
+    const extensions = commentJson.parse(
       updatedTree.readContent('.vscode/extensions.json')
     );
 
-    const settings = JSON.parse(
+    const settings = commentJson.parse(
       updatedTree.readContent('.vscode/settings.json')
     );
 

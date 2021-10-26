@@ -1,3 +1,8 @@
+import { normalize } from '@angular-devkit/core';
+import {
+  ProjectDefinition,
+  WorkspaceDefinition,
+} from '@angular-devkit/core/src/workspace';
 import {
   chain,
   Rule,
@@ -10,7 +15,11 @@ import {
   NodeDependencyType,
 } from '@schematics/angular/utility/dependencies';
 
+import commentJson from 'comment-json';
+import path from 'path';
+
 import { readRequiredFile } from '../utility/tree';
+import { getWorkspace } from '../utility/workspace';
 
 import { ESLintConfig } from './types/eslint-config';
 import { VSCodeExtensions } from './types/vscode-extensions';
@@ -18,7 +27,7 @@ import { VSCodeSettings } from './types/vscode-settings';
 
 function readJsonFile<T>(tree: Tree, path: string): T {
   if (tree.exists(path)) {
-    return JSON.parse(readRequiredFile(tree, path));
+    return commentJson.parse(readRequiredFile(tree, path));
   }
 
   return {} as T;
@@ -33,19 +42,7 @@ function writeTextFile(tree: Tree, path: string, contents: string): void {
 }
 
 function writeJsonFile<T>(tree: Tree, path: string, contents: T): void {
-  writeTextFile(tree, path, JSON.stringify(contents, undefined, 2));
-}
-
-function validateWorkspace(): Rule {
-  return (tree) => {
-    const filePath = '.eslintrc.json';
-
-    if (!tree.exists(filePath)) {
-      throw new SchematicsException(
-        `No ${filePath} file found in workspace root. ESLint must be installed and configured before installing Prettier. See https://github.com/angular-eslint/angular-eslint#readme for instructions.`
-      );
-    }
-  };
+  writeTextFile(tree, path, commentJson.stringify(contents, undefined, 2));
 }
 
 function addPrettierDependencies(): Rule {
@@ -56,13 +53,6 @@ function addPrettierDependencies(): Rule {
       name: 'prettier',
       type: NodeDependencyType.Dev,
       version: '2.4.1',
-      overwrite: true,
-    });
-
-    addPackageJsonDependency(tree, {
-      name: '@trivago/prettier-plugin-sort-imports',
-      type: NodeDependencyType.Dev,
-      version: '2.0.4',
       overwrite: true,
     });
 
@@ -84,8 +74,6 @@ function writePrettierConfig(): Rule {
     context.logger.info(`Creating ${filePath} file with default settings...`);
 
     const prettierConfig = {
-      importOrder: ['^@(.*)$', '^\\w(.*)$', '^(../)(.*)$', '^(./)(.*)$'],
-      importOrderSeparation: true,
       singleQuote: true,
     };
 
@@ -112,28 +100,73 @@ function writePrettierIgnore(): Rule {
 coverage
 dist
 node_modules
-package-lock.json`
+package-lock.json
+test.ts`
     );
 
     return tree;
   };
 }
 
-function configureESLint(): Rule {
+function configureESLint(workspace: WorkspaceDefinition): Rule {
   return (tree, context) => {
-    const filePath = '.eslintrc.json';
+    const fileName = '.eslintrc.json';
+    const updatedESLintConfigs: { [key: string]: boolean } = {};
+
+    function addPrettierPluginToESLintConfig(eslintConfigPath: string): void {
+      if (updatedESLintConfigs[eslintConfigPath]) {
+        context.logger.info(
+          `${eslintConfigPath} has already been configured with Prettier. Skipping...`
+        );
+      } else if (tree.exists(eslintConfigPath)) {
+        context.logger.info(`Found ${eslintConfigPath}...`);
+
+        const eslintConfig = readJsonFile<ESLintConfig>(tree, eslintConfigPath);
+
+        if (eslintConfig.extends) {
+          const parentFolder = path.dirname(eslintConfigPath);
+          const extendsPath = normalize(
+            `${parentFolder}/${eslintConfig.extends}`
+          );
+
+          context.logger.info(
+            `${eslintConfigPath} extends ${extendsPath}. Configuring the extended file...`
+          );
+
+          if (!tree.exists(extendsPath)) {
+            throw new SchematicsException(
+              `${eslintConfigPath} extends ${extendsPath}, but ${extendsPath} was not found in the workspace.`
+            );
+          }
+
+          addPrettierPluginToESLintConfig(extendsPath);
+        } else {
+          eslintConfig.overrides = eslintConfig.overrides || {};
+          eslintConfig.overrides.extends = eslintConfig.overrides.extends || [];
+          eslintConfig.overrides.extends.push('prettier');
+
+          writeJsonFile(tree, eslintConfigPath, eslintConfig);
+          updatedESLintConfigs[eslintConfigPath] = true;
+        }
+      }
+    }
 
     context.logger.info('Configuring ESLint Prettier plugin...');
 
-    const eslintConfig = readJsonFile<ESLintConfig>(tree, filePath);
+    const projects = workspace.projects.values();
+    let project: ProjectDefinition;
 
-    eslintConfig.overrides = eslintConfig.overrides || {};
-    eslintConfig.overrides.extends = eslintConfig.overrides.extends || [];
-    eslintConfig.overrides.extends.push('prettier');
+    while ((project = projects.next().value)) {
+      addPrettierPluginToESLintConfig(normalize(`${project.root}/${fileName}`));
+    }
 
-    writeJsonFile(tree, filePath, eslintConfig);
+    addPrettierPluginToESLintConfig(fileName);
 
-    return tree;
+    if (Object.keys(updatedESLintConfigs).length === 0) {
+      throw new SchematicsException(
+        `No ${fileName} file found in workspace. ESLint must be installed and configured before installing Prettier. See https://github.com/angular-eslint/angular-eslint#readme for instructions.`
+      );
+    }
   };
 }
 
@@ -177,13 +210,14 @@ function configureVSCode(): Rule {
 }
 
 export default function ngAdd(): Rule {
-  return () => {
+  return async (tree) => {
+    const { workspace } = await getWorkspace(tree);
+
     return chain([
-      validateWorkspace(),
+      configureESLint(workspace),
       addPrettierDependencies(),
       writePrettierConfig(),
       writePrettierIgnore(),
-      configureESLint(),
       configureVSCode(),
       (_tree, context) => {
         context.addTask(new NodePackageInstallTask());
