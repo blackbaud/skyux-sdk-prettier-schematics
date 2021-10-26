@@ -209,19 +209,11 @@ test.ts`);
 
     const updatedTree = await runSchematic(tree);
 
-    const extensions = commentJson.parse(
-      updatedTree.readContent('.vscode/extensions.json')
-    );
-
-    const settings = commentJson.parse(
-      updatedTree.readContent('.vscode/settings.json')
-    );
-
-    expect(extensions).toEqual({
+    validateJsonFile(updatedTree, '.vscode/extensions.json', {
       recommendations: ['esbenp.prettier-vscode'],
     });
 
-    expect(settings).toEqual({
+    validateJsonFile(updatedTree, '.vscode/settings.json', {
       'editor.defaultFormatter': 'esbenp.prettier-vscode',
       'editor.formatOnSave': true,
       'prettier.requireConfig': true,
