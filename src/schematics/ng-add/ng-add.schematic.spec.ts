@@ -39,6 +39,16 @@ describe('ng-add.schematic', () => {
       .toPromise();
   }
 
+  function validateJsonFile(
+    tree: UnitTestTree,
+    path: string,
+    expectedContents: unknown
+  ) {
+    const prettierConfig = commentJson.parse(tree.readContent(path));
+
+    expect(prettierConfig).toEqual(expectedContents);
+  }
+
   it('should run the NodePackageInstallTask', async () => {
     await runSchematic(tree);
 
@@ -59,14 +69,14 @@ describe('ng-add.schematic', () => {
   it('should install the expected packages', async () => {
     const updatedTree = await runSchematic(tree);
 
-    const packageJson = commentJson.parse(
-      updatedTree.readContent('package.json')
-    );
-
-    expect(packageJson.devDependencies).toEqual(
+    validateJsonFile(
+      updatedTree,
+      'package.json',
       jasmine.objectContaining({
-        prettier: '2.4.1',
-        'eslint-config-prettier': '8.3.0',
+        devDependencies: jasmine.objectContaining({
+          prettier: '2.4.1',
+          'eslint-config-prettier': '8.3.0',
+        }),
       })
     );
   });
@@ -74,11 +84,7 @@ describe('ng-add.schematic', () => {
   it('should write Prettier config', async () => {
     const updatedTree = await runSchematic(tree);
 
-    const prettierConfig = commentJson.parse(
-      updatedTree.readContent('.prettierrc.json')
-    );
-
-    expect(prettierConfig).toEqual({
+    validateJsonFile(updatedTree, '.prettierrc.json', {
       singleQuote: true,
     });
   });
@@ -110,11 +116,7 @@ test.ts`);
 
     const updatedTree = await runSchematic(tree);
 
-    const eslintConfig = commentJson.parse(
-      updatedTree.readContent(eslintConfigPath)
-    );
-
-    expect(eslintConfig).toEqual({
+    validateJsonFile(updatedTree, eslintConfigPath, {
       overrides: {
         extends: ['foo', 'prettier'],
       },
@@ -137,11 +139,7 @@ test.ts`);
 
     const updatedTree = await runSchematic(tree);
 
-    const eslintConfig = commentJson.parse(
-      updatedTree.readContent(projectEslintConfigPath)
-    );
-
-    expect(eslintConfig).toEqual({
+    validateJsonFile(updatedTree, projectEslintConfigPath, {
       overrides: {
         extends: ['foo', 'prettier'],
       },
@@ -163,22 +161,14 @@ test.ts`);
 
     const updatedTree = await runSchematic(tree);
 
-    const projectEslintConfig = commentJson.parse(
-      updatedTree.readContent(projectEslintConfigPath)
-    );
-
-    expect(projectEslintConfig).toEqual({
+    validateJsonFile(updatedTree, projectEslintConfigPath, {
       extends: '../../.eslintrc.json',
       overrides: {
         extends: ['bar'],
       },
     });
 
-    const eslintConfig = commentJson.parse(
-      updatedTree.readContent(eslintConfigPath)
-    );
-
-    expect(eslintConfig).toEqual({
+    validateJsonFile(updatedTree, eslintConfigPath, {
       overrides: {
         extends: ['prettier'],
       },
@@ -200,11 +190,7 @@ test.ts`);
 
     const updatedTree = await runSchematic(tree);
 
-    const projectEslintConfig = commentJson.parse(
-      updatedTree.readContent(projectEslintConfigPath)
-    );
-
-    expect(projectEslintConfig).toEqual({
+    validateJsonFile(updatedTree, projectEslintConfigPath, {
       extends: '../.eslintrc.json',
       overrides: {
         extends: ['bar', 'prettier'],
