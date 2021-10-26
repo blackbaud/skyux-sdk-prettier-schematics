@@ -129,25 +129,32 @@ function configureESLint(workspace: WorkspaceDefinition): Rule {
             `${parentFolder}/${eslintConfig.extends}`
           );
 
-          context.logger.info(
-            `${eslintConfigPath} extends ${extendsPath}. Configuring the extended file...`
-          );
+          if (tree.exists(extendsPath)) {
+            context.logger.info(
+              `${eslintConfigPath} extends ${extendsPath}. Configuring the extended file...`
+            );
 
-          if (!tree.exists(extendsPath)) {
-            throw new SchematicsException(
-              `${eslintConfigPath} extends ${extendsPath}, but ${extendsPath} was not found in the workspace.`
+            addPrettierPluginToESLintConfig(extendsPath);
+            return;
+          } else {
+            // Running the Angular ESLint add schematic on a workspace with one project will create
+            // a .eslintrc.json file in the project folder, set its `extends` property to the workspace's
+            // .eslintrc.json file, but doesn't create the workspace file, so it points to a non-existent
+            // file. Just
+            context.logger.info(
+              `${eslintConfigPath} extends ${extendsPath}, but ${extendsPath} does not exist. Configuring ${eslintConfigPath} instead...`
             );
           }
-
-          addPrettierPluginToESLintConfig(extendsPath);
-        } else {
-          eslintConfig.overrides = eslintConfig.overrides || {};
-          eslintConfig.overrides.extends = eslintConfig.overrides.extends || [];
-          eslintConfig.overrides.extends.push('prettier');
-
-          writeJsonFile(tree, eslintConfigPath, eslintConfig);
-          updatedESLintConfigs[eslintConfigPath] = true;
         }
+
+        context.logger.info(`Configuring ${eslintConfigPath}...`);
+
+        eslintConfig.overrides = eslintConfig.overrides || {};
+        eslintConfig.overrides.extends = eslintConfig.overrides.extends || [];
+        eslintConfig.overrides.extends.push('prettier');
+
+        writeJsonFile(tree, eslintConfigPath, eslintConfig);
+        updatedESLintConfigs[eslintConfigPath] = true;
       }
     }
 

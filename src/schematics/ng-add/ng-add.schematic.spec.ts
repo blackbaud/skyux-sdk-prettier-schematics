@@ -185,7 +185,7 @@ test.ts`);
     });
   });
 
-  it('should error when an .eslintrc.json file extends an .eslintrc.json file that does not exist', async () => {
+  it("should configure a project's .eslintrc.json file when it extends an .eslintrc.json file that does not exist", async () => {
     const projectEslintConfigPath = `projects/my-lib/${eslintConfigPath}`;
 
     tree.create(
@@ -198,9 +198,18 @@ test.ts`);
       })
     );
 
-    await expectAsync(runSchematic(tree)).toBeRejectedWithError(
-      `${projectEslintConfigPath} extends projects/.eslintrc.json, but projects/.eslintrc.json was not found in the workspace.`
+    const updatedTree = await runSchematic(tree);
+
+    const projectEslintConfig = commentJson.parse(
+      updatedTree.readContent(projectEslintConfigPath)
     );
+
+    expect(projectEslintConfig).toEqual({
+      extends: '../.eslintrc.json',
+      overrides: {
+        extends: ['bar', 'prettier'],
+      },
+    });
   });
 
   it('should not configure VSCode if .vscode folder does not exist', async () => {
