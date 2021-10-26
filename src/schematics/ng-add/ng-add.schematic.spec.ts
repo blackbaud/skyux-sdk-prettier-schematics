@@ -8,6 +8,7 @@ import path from 'path';
 import { createTestLibrary } from '../testing/scaffold';
 
 const COLLECTION_PATH = path.resolve(__dirname, '../../../collection.json');
+const eslintConfigPath = '.eslintrc.json';
 
 describe('ng-add.schematic', () => {
   const defaultProjectName = 'my-lib';
@@ -22,7 +23,7 @@ describe('ng-add.schematic', () => {
       name: defaultProjectName,
     });
 
-    tree.create('.eslintrc', '{}');
+    tree.create(eslintConfigPath, '{}');
   });
 
   function runSchematic(tree: UnitTestTree): Promise<UnitTestTree> {
@@ -47,10 +48,10 @@ describe('ng-add.schematic', () => {
   });
 
   it('should throw an error if ESLint is not configured.', async () => {
-    tree.delete('.eslintrc');
+    tree.delete(eslintConfigPath);
 
     await expectAsync(runSchematic(tree)).toBeRejectedWithError(
-      'No .eslintrc file found in workspace root. ESLint must be installed and configured before installing Prettier. See https://github.com/angular-eslint/angular-eslint#readme for instructions.'
+      `No ${eslintConfigPath} file found in workspace root. ESLint must be installed and configured before installing Prettier. See https://github.com/angular-eslint/angular-eslint#readme for instructions.`
     );
   });
 
@@ -68,7 +69,9 @@ describe('ng-add.schematic', () => {
   it('should write Prettier config', async () => {
     const updatedTree = await runSchematic(tree);
 
-    const prettierConfig = JSON.parse(updatedTree.readContent('.prettierrc'));
+    const prettierConfig = JSON.parse(
+      updatedTree.readContent('.prettierrc.json')
+    );
 
     expect(prettierConfig).toEqual({
       importOrder: ['^@(.*)$', '^\\w(.*)$', '^(../)(.*)$', '^(./)(.*)$'],
@@ -91,9 +94,9 @@ node_modules
 package-lock.json`);
   });
 
-  it('should configure ESLint if an .eslintrc file exists', async () => {
+  it('should configure ESLint if an .eslintrc.json file exists', async () => {
     tree.overwrite(
-      '.eslintrc',
+      eslintConfigPath,
       JSON.stringify({
         overrides: {
           extends: ['foo'],
@@ -103,7 +106,7 @@ package-lock.json`);
 
     const updatedTree = await runSchematic(tree);
 
-    const eslintConfig = JSON.parse(updatedTree.readContent('.eslintrc'));
+    const eslintConfig = JSON.parse(updatedTree.readContent(eslintConfigPath));
 
     expect(eslintConfig).toEqual({
       overrides: {

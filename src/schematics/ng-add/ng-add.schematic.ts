@@ -38,9 +38,11 @@ function writeJsonFile<T>(tree: Tree, path: string, contents: T): void {
 
 function validateWorkspace(): Rule {
   return (tree) => {
-    if (!tree.exists('.eslintrc')) {
+    const filePath = '.eslintrc.json';
+
+    if (!tree.exists(filePath)) {
       throw new SchematicsException(
-        'No .eslintrc file found in workspace root. ESLint must be installed and configured before installing Prettier. See https://github.com/angular-eslint/angular-eslint#readme for instructions.'
+        `No ${filePath} file found in workspace root. ESLint must be installed and configured before installing Prettier. See https://github.com/angular-eslint/angular-eslint#readme for instructions.`
       );
     }
   };
@@ -77,7 +79,9 @@ function addPrettierDependencies(): Rule {
 
 function writePrettierConfig(): Rule {
   return (tree, context) => {
-    context.logger.info('Creating .prettierrc file with default settings...');
+    const filePath = '.prettierrc.json';
+
+    context.logger.info(`Creating ${filePath} file with default settings...`);
 
     const prettierConfig = {
       importOrder: ['^@(.*)$', '^\\w(.*)$', '^(../)(.*)$', '^(./)(.*)$'],
@@ -85,7 +89,7 @@ function writePrettierConfig(): Rule {
       singleQuote: true,
     };
 
-    writeJsonFile(tree, '.prettierrc', prettierConfig);
+    writeJsonFile(tree, filePath, prettierConfig);
 
     return tree;
   };
@@ -93,13 +97,15 @@ function writePrettierConfig(): Rule {
 
 function writePrettierIgnore(): Rule {
   return (tree, context) => {
+    const filePath = '.prettierignore';
+
     context.logger.info(
-      'Creating .prettierignore file with commonly-ignored paths...'
+      `Creating ${filePath} file with commonly-ignored paths...`
     );
 
     writeTextFile(
       tree,
-      '.prettierignore',
+      filePath,
       `# Ignore artifacts:
 .github
 .nyc_output
@@ -115,17 +121,17 @@ package-lock.json`
 
 function configureESLint(): Rule {
   return (tree, context) => {
-    const eslintrcPath = '.eslintrc';
+    const filePath = '.eslintrc.json';
 
     context.logger.info('Configuring ESLint Prettier plugin...');
 
-    const eslintConfig = readJsonFile<ESLintConfig>(tree, eslintrcPath);
+    const eslintConfig = readJsonFile<ESLintConfig>(tree, filePath);
 
     eslintConfig.overrides = eslintConfig.overrides || {};
     eslintConfig.overrides.extends = eslintConfig.overrides.extends || [];
     eslintConfig.overrides.extends.push('prettier');
 
-    writeJsonFile(tree, eslintrcPath, eslintConfig);
+    writeJsonFile(tree, filePath, eslintConfig);
 
     return tree;
   };
@@ -133,12 +139,14 @@ function configureESLint(): Rule {
 
 function configureVSCode(): Rule {
   return (tree, context) => {
-    const extensionsPath = '.vscode/extensions.json';
-    const settingsPath = '.vscode/settings.json';
+    const vsCodePath = '.vscode';
+    const extensionsPath = `${vsCodePath}/extensions.json`;
+    const settingsPath = `${vsCodePath}/settings.json`;
+    const prettierExtensionName = 'esbenp.prettier-vscode';
 
     if (tree.getDir('.vscode').subfiles.length) {
       context.logger.info(
-        'Found files in .vscode folder. Configuring Visual Studio Code for Prettier extension...'
+        `Found files in ${vsCodePath} folder. Configuring Visual Studio Code for Prettier extension...`
       );
 
       const extensions = readJsonFile<VSCodeExtensions>(tree, extensionsPath);
@@ -149,7 +157,7 @@ function configureVSCode(): Rule {
       );
 
       extensions.recommendations = extensions.recommendations || [];
-      extensions.recommendations.push('esbenp.prettier-vscode');
+      extensions.recommendations.push(prettierExtensionName);
 
       writeJsonFile(tree, extensionsPath, extensions);
 
@@ -157,7 +165,7 @@ function configureVSCode(): Rule {
         'Setting Prettier as default formatter for workspace...'
       );
 
-      settings['editor.defaultFormatter'] = 'esbenp.prettier-vscode';
+      settings['editor.defaultFormatter'] = prettierExtensionName;
       settings['editor.formatOnSave'] = true;
       settings['prettier.requireConfig'] = true;
 
