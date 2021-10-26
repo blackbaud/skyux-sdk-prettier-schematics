@@ -44,9 +44,8 @@ describe('ng-add.schematic', () => {
     path: string,
     expectedContents: unknown
   ) {
-    const prettierConfig = commentJson.parse(tree.readContent(path));
-
-    expect(prettierConfig).toEqual(expectedContents);
+    const contents = commentJson.parse(tree.readContent(path));
+    expect(contents).toEqual(expectedContents);
   }
 
   it('should run the NodePackageInstallTask', async () => {
