@@ -23,8 +23,7 @@
     "@angular-devkit/build-angular": "^12.2.7"
   },
   "dependencies": {
-    "comment-json": "4.1.1",
-    "typedoc": "0.22.4"
+    "comment-json": "4.1.1"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "12.2.7",

@@ -1,6 +1,8 @@
 export interface ESLintConfig {
-  extends?: string;
-  overrides?: {
-    extends?: string[];
-  };
+  extends?: string | string[];
+  overrides?: [
+    {
+      extends?: string | string[];
+    }
+  ];
 }
