@@ -4,7 +4,18 @@ import { writeJsonFile } from '../../utility/tree';
 
 export function writePrettierConfig(): Rule {
   return (tree, context) => {
-    const filePath = '.prettierrc.json';
+    const configPaths = ['.prettierrc.json', '.prettierrc'];
+
+    for (const filePath of configPaths) {
+      if (tree.exists(filePath)) {
+        context.logger.info(
+          `Prettier config file found at "${filePath}". Aborting config update.`
+        );
+        return;
+      }
+    }
+
+    const filePath = configPaths[0];
 
     context.logger.info(`Creating ${filePath} file with default settings...`);
 
