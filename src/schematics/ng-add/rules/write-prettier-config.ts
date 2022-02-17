@@ -9,7 +9,7 @@ export function writePrettierConfig(): Rule {
     for (const filePath of configPaths) {
       if (tree.exists(filePath)) {
         context.logger.info(
-          `Prettier config file found at "${filePath}". Aborting config update.`
+          `Prettier config found at "${filePath}". Ignoring config update.`
         );
         return;
       }

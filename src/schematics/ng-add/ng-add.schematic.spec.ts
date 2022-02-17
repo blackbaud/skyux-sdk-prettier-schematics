@@ -105,6 +105,20 @@ describe('ng-add.schematic', () => {
     });
   });
 
+  it('should not write Prettier config if already exists', async () => {
+    tree.create('.prettierrc', '{"original": true}');
+    tree.create('.prettierrc.json', '{"original": true}');
+
+    const updatedTree = await runSchematic(tree);
+
+    validateJsonFile(updatedTree, '.prettierrc', {
+      original: true,
+    });
+    validateJsonFile(updatedTree, '.prettierrc.json', {
+      original: true,
+    });
+  });
+
   it('should write Prettier ignore', async () => {
     const updatedTree = await runSchematic(tree);
 
