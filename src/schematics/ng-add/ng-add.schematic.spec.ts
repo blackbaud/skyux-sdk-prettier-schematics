@@ -52,8 +52,7 @@ describe('ng-add.schematic', () => {
     await runSchematic(tree);
 
     expect(runner.tasks.some((task) => task.name === 'node-package')).toEqual(
-      true,
-      'Expected the schematic to setup a package install step.'
+      true
     );
   });
 
@@ -313,7 +312,7 @@ test.ts`);
   it('should not configure VSCode if .vscode folder does not exist', async () => {
     const updatedTree = await runSchematic(tree);
 
-    expect(updatedTree.exists('.vscode/extensions.json')).toBeFalse();
+    expect(updatedTree.exists('.vscode/extensions.json')).toEqual(false);
   });
 
   it('should configure VSCode if files exist in the .vscode folder', async () => {
