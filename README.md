@@ -1,23 +1,7 @@
-# @skyux-sdk/prettier-schematics
+# @skyux-sdk/prettier-schematics (moved)
 
-## Installation
+### *The source code for `@skyux-sdk/prettier-schematics` has moved to [blackbaud/skyux](https://github.com/blackbaud/skyux).*
 
-Within the directory of an Angular CLI application, run:
+To work with the latest version of `@skyux-sdk/prettier-schematics`, go to [blackbaud/skyux](https://github.com/blackbaud/skyux).
 
-```
-ng add @skyux-sdk/prettier-schematics
-```
-
-## Local setup
-
-- Run `npm start` for local development; changes are transpiled automatically after each file is saved.
-- Change directory to `./builders-test-lib` and run:
-
-```
-npm install
-npm run dev-setup
-```
-
-## Build
-
-- Run `npm run build` to create the distribution package.
+The source code for SKY UX 4 remains in the [`4.x.x`](https://github.com/blackbaud/skyux-sdk-prettier-schematics/tree/4.x.x) branch of this repo.
